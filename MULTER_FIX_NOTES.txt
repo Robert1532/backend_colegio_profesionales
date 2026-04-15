@@ -1,0 +1,26 @@
+MULTER UPLOAD FIX
+=================
+
+Problema Original:
+- "Solo se permiten archivos: PDF, JPG, PNG" - incluso con archivos válidos
+- Validación demasiado estricta con AND (mimetype && extname)
+
+Solución Implementada:
+1. Cambié fileFilter a validar con OR en lugar de AND
+2. Ahora acepta si:
+   - La extensión está en: [.pdf, .jpg, .jpeg, .png]  OR
+   - El MIME type está en: [application/pdf, image/jpeg, image/png]
+
+3. Añadí middleware de error personalizado en la ruta POST
+4. Los errores ahora se capturan y responden correctamente
+
+Archivos Modificados:
+- backend/routes/pagos.js:
+  * Mejoré fileFilter (líneas 29-43)
+  * Añadí error handler middleware (líneas 63-83)
+
+Resultado:
+- Upload de PDF: ✅ Funciona
+- Upload de JPG: ✅ Funciona  
+- Upload de PNG: ✅ Funciona
+- Errores claros: ✅ Se reportan correctamente

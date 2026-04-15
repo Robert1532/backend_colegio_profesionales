@@ -1,0 +1,72 @@
+╔════════════════════════════════════════════════════════════════╗
+║  CREAR USUARIO ADMIN - INSTRUCCIONES SIMPLES                    ║
+╚════════════════════════════════════════════════════════════════╝
+
+El script create-admin.js automatiza todo. Sigue estos pasos:
+
+OPCIÓN 1: Usar NPM Script (MÁS FÁCIL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. En la carpeta 'backend', ejecuta:
+   
+   npm run create-admin
+
+2. Sigue las instrucciones en la pantalla
+3. ¡Listo! Tu usuario admin está creado
+
+
+OPCIÓN 2: Ejecutar Script Directamente
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. En la carpeta 'backend', ejecuta:
+
+   node scripts/create-admin.js
+
+2. Sigue las instrucciones en la pantalla
+3. ¡Listo! Tu usuario admin está creado
+
+
+CREDENCIALES POR DEFECTO (si no responde las preguntas)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Email: admin@colegio.com
+Contraseña: admin123456
+
+
+CREAR ADMIN MANUALMENTE EN MYSQL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Si prefieres hacerlo manualmente en MySQL:
+
+1. Abre MySQL Workbench o terminal MySQL
+2. Selecciona la base de datos: USE colegio_profesionales;
+3. Ejecuta este comando (CAMBIA LA CONTRASEÑA):
+
+   INSERT INTO usuarios (nombre, apellido, correo, telefono, password, rol, estado)
+   VALUES (
+     'Admin',
+     'Sistema',
+     'admin@colegio.com',
+     '0000000000',
+     '$2b$10$YOhxeoMGyF8sCpL6HCqZ0uMEeR6.BqKKDXpWZeFk7bHk7W.2lEu.a',
+     'admin',
+     'aprobado'
+   );
+
+   El password hash corresponde a: admin123456
+
+
+DESPUÉS DE CREAR EL ADMIN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Abre la app Flutter
+2. En la pantalla de login del admin, usa:
+   Email: admin@colegio.com
+   Contraseña: admin123456
+
+3. ¡Inicia sesión!
+
+
+PROBLEMAS?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Si tienes error de conexión MySQL, asegúrate de:
+  ✓ MySQL está corriendo
+  ✓ Usuario y contraseña en .env son correctos
+  ✓ Base de datos 'colegio_profesionales' existe
+
+- Revisa: backend/TROUBLESHOOTING.md para más ayuda
