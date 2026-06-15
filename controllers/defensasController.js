@@ -281,6 +281,93 @@ const completeDefensa = (req, res) => {
   });
 };
 
+// Obtener defensas completadas (finalizadas) con info del profesional asignado
+const getDefensasCompletadas = (req, res) => {
+  const query = `
+    SELECT 
+      d.id,
+      d.estudiante,
+      d.nombre_estudiante,
+      d.tipo_documento,
+      d.universidad,
+      d.universidad_nombre,
+      d.lugar,
+      d.fecha,
+      d.hora,
+      d.monto_interno,
+      d.max_profesionales,
+      d.documento_academico,
+      d.estado,
+      d.created_at,
+      d.updated_at,
+      p.id as postulacion_id,
+      p.profesional_id,
+      p.estado as postulacion_estado,
+      p.constancia_asistencia,
+      u.nombre as nombre_profesional,
+      u.apellido as apellido_profesional,
+      u.especialidad,
+      pg.id as pago_id,
+      pg.monto_pagado,
+      pg.estado as estado_pago
+    FROM defensas d
+    LEFT JOIN postulaciones p ON d.id = p.defensa_id AND p.estado IN ('aceptado', 'aceptada')
+    LEFT JOIN usuarios u ON p.profesional_id = u.id
+    LEFT JOIN pagos pg ON d.id = pg.defensa_id AND p.profesional_id = pg.profesional_id
+    WHERE d.estado IN ('completado', 'finalizado')
+    ORDER BY d.fecha DESC
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("[ERROR] Database error:", err);
+      return res.status(500).json({ error: "Error en la base de datos" });
+    }
+
+    // Formatear respuesta
+    const defensas = results.map(row => ({
+      id: row.id,
+      nombreEstudiante: row.nombre_estudiante || row.estudiante,
+      estudiante: row.estudiante,
+      tipoDocumento: row.tipo_documento,
+      universidad: row.universidad,
+      universidadNombre: row.universidad_nombre,
+      lugar: row.lugar,
+      fecha: row.fecha,
+      hora: row.hora,
+      monto: parseFloat(row.monto_interno) || 0,
+      monto_interno: parseFloat(row.monto_interno) || 0,
+      maxProfesionales: row.max_profesionales,
+      max_profesionales: row.max_profesionales,
+      documentoAcademico: row.documento_academico,
+      documento_academico: row.documento_academico,
+      estado: row.estado,
+      fechaCreacion: row.created_at,
+      updatedAt: row.updated_at,
+      postulacion: row.postulacion_id ? {
+        id: row.postulacion_id,
+        profesional_id: row.profesional_id,
+        estado: row.postulacion_estado,
+        constancia_asistencia: row.constancia_asistencia
+      } : null,
+      profesional: row.nombre_profesional ? {
+        id: row.profesional_id,
+        nombre: row.nombre_profesional,
+        apellido: row.apellido_profesional,
+        especialidad: row.especialidad,
+        nombre_completo: `${row.nombre_profesional} ${row.apellido_profesional}`
+      } : null,
+      pago: row.pago_id ? {
+        id: row.pago_id,
+        monto_pagado: parseFloat(row.monto_pagado) || 0,
+        estado: row.estado_pago
+      } : null
+    }));
+
+    res.json({ success: true, defensas_completadas: defensas });
+  });
+};
+
 module.exports = {
   getDefensas,
   getDefensaById,
@@ -288,5 +375,6 @@ module.exports = {
   createDefensa,
   updateDefensa,
   deleteDefensa,
-  completeDefensa
+  completeDefensa,
+  getDefensasCompletadas
 };

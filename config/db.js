@@ -8,10 +8,10 @@ try {
 }
 
 const db = mysql.createConnection({
-  host: process.env.DB_HOST || "db45801.public.databaseasp.net",
-  user: process.env.DB_USER || "db45801",
-  password: process.env.DB_PASSWORD || "c%5N+7KhMx2#",
-  database: process.env.DB_NAME || "db45801",
+  host: process.env.DB_HOST || "localhost",
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "baa123456789",
+  database: process.env.DB_NAME || "defaultdb",
   port: process.env.DB_PORT || 3306,
   waitForConnections: true,
   connectionLimit: 10,

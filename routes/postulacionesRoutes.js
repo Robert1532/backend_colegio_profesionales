@@ -11,6 +11,8 @@ const {
   updatePostulacion,
   deletePostulacion,
   uploadAttendanceCertificate,
+  acceptPostulacion,
+  completeDefensa,
 } = require("../controllers/postulacionesController");
 
 // Configure multer for certificate uploads
@@ -44,7 +46,7 @@ const upload = multer({
       cb(new Error(errorMsg));
     }
   },
-  limits: { fileSize: 20 * 1024 * 1024 } // 20MB para PDFs
+  limits: { fileSize: 100 * 1024 * 1024 } // 100MB para PDFs
 });
 
 // Middleware wrapper for certificate upload - accepts both 'constancia' and 'certificate'
@@ -90,13 +92,22 @@ const uploadCertificate = (req, res, next) => {
   });
 };
 
+// GET routes - specific paths MUST come before generic :id
 router.get("/", getPostulaciones);
-router.get("/:id", getPostulacionById);
 router.get("/defensa/:defensaId", getPostulacionesByDefensa);
 router.get("/profesional/:profesionalId", getPostulacionesByProfesional);
+router.get("/:id", getPostulacionById);
+
+// POST routes
 router.post("/", createPostulacion);
-router.put("/:id", updatePostulacion);
 router.post("/:id/certificate", uploadCertificate, uploadAttendanceCertificate);
+
+// PUT routes
+router.put("/:id/aceptar", acceptPostulacion);
+router.put("/:id/completar", completeDefensa);
+router.put("/:id", updatePostulacion);
+
+// DELETE routes
 router.delete("/:id", deletePostulacion);
 
 module.exports = router;

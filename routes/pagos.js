@@ -47,7 +47,7 @@ const upload = multer({
       cb(new Error(errorMsg));
     }
   },
-  limits: { fileSize: 20 * 1024 * 1024 } // 20MB para PDFs
+  limits: { fileSize: 100 * 1024 * 1024 } // 100MB para PDFs
 });
 
 // Get all pagos

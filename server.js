@@ -22,8 +22,9 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+// Aumentar límites para soportar archivos más grandes (100MB)
+app.use(express.json({ limit: '100mb' }));
+app.use(bodyParser.urlencoded({ limit: '100mb', extended: true }));
 
 // Servir archivos estáticos (uploads)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

@@ -75,7 +75,7 @@ const createProfesional = (req, res) => {
 const getProfesionales = (req, res) => {
   const estado = req.query.estado;
 
-  let query = "SELECT * FROM usuarios WHERE rol = 'profesional'";
+  let query = "SELECT id, codigo_registro, nombre, apellido, correo, telefono, rol, especialidad, estado, created_at, total_ganado, pendiente, motivo_rechazo, debe_cambiar_password, esPrivilegido FROM usuarios WHERE rol = 'profesional'";
 
   if (estado) {
     query += ` AND estado = '${estado}'`;
@@ -97,7 +97,7 @@ const getProfesionales = (req, res) => {
 const getProfesionalById = (req, res) => {
   const { id } = req.params;
 
-  const query = "SELECT * FROM usuarios WHERE id = ? AND rol = 'profesional'";
+  const query = "SELECT id, codigo_registro, nombre, apellido, correo, telefono, rol, especialidad, estado, created_at, total_ganado, pendiente, motivo_rechazo, debe_cambiar_password, esPrivilegido FROM usuarios WHERE id = ? AND rol = 'profesional'";
 
   db.query(query, [id], (err, result) => {
     if (err) {
@@ -124,7 +124,7 @@ const getProfesionalesByEstado = (req, res) => {
   }
 
   const query = `
-  SELECT * FROM usuarios 
+  SELECT id, codigo_registro, nombre, apellido, correo, telefono, rol, especialidad, estado, created_at, total_ganado, pendiente, motivo_rechazo, debe_cambiar_password, esPrivilegido FROM usuarios 
   WHERE rol = 'profesional' AND estado = ?
   ORDER BY nombre
   `;

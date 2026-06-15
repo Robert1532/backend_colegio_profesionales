@@ -421,12 +421,70 @@ const uploadAttendanceCertificate = (req, res) => {
         error: "Postulation not found" 
       });
     }
-    res.status(200).json({
-      success: true,
-      message: "Attendance certificate uploaded successfully",
-      constancia_path: constanciaRuta,
-      constancia_asistencia: constanciaRuta,
-      postulacion_id: id
+
+    // Obtener defensa_id para marcar como completado
+    const selectQuery = "SELECT defensa_id, profesional_id FROM postulaciones WHERE id = ?";
+    db.query(selectQuery, [id], (err, results) => {
+      if (err) {
+        console.error("[ERROR] Error fetching postulation:", err);
+        return res.status(200).json({
+          success: true,
+          message: "Attendance certificate uploaded successfully",
+          constancia_path: constanciaRuta,
+          constancia_asistencia: constanciaRuta,
+          postulacion_id: id
+        });
+      }
+
+      if (results.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: "Attendance certificate uploaded successfully",
+          constancia_path: constanciaRuta,
+          constancia_asistencia: constanciaRuta,
+          postulacion_id: id
+        });
+      }
+
+      const postulacion = results[0];
+
+      // Actualizar defensa a "completado" cuando se sube constancia
+      const updateDefensaQuery = `
+        UPDATE defensas 
+        SET estado = 'completado', updated_at = NOW()
+        WHERE id = ?
+      `;
+
+      db.query(updateDefensaQuery, [postulacion.defensa_id], (err) => {
+        if (err) {
+          console.error("[ERROR] Error updating defensa:", err);
+          // No fallar si hay error, ya se guardó la constancia
+        } else {
+          console.log(`[v0] Defensa ${postulacion.defensa_id} marked as completado after constancia upload`);
+        }
+
+        // Actualizar pago a estado "pendiente_pago"
+        const updatePagoQuery = `
+          UPDATE pagos
+          SET estado = 'pendiente_pago'
+          WHERE defensa_id = ? AND profesional_id = ? AND estado = 'pendiente'
+        `;
+
+        db.query(updatePagoQuery, [postulacion.defensa_id, postulacion.profesional_id], (err) => {
+          if (err) {
+            console.error("[ERROR] Error updating pago:", err);
+          }
+
+          res.status(200).json({
+            success: true,
+            message: "Attendance certificate uploaded successfully",
+            constancia_path: constanciaRuta,
+            constancia_asistencia: constanciaRuta,
+            postulacion_id: id,
+            defensa_estado: "completado"
+          });
+        });
+      });
     });
   });
 };
@@ -537,6 +595,199 @@ const getDefensasHistorial = (req, res) => {
   });
 };
 
+// Marcar defensa como completado cuando se sube constancia
+const completeDefensa = (req, res) => {
+  const { id } = req.params;
+  
+  // Obtener defensa_id de la postulación
+  const selectQuery = `
+    SELECT p.defensa_id, p.profesional_id, p.estado
+    FROM postulaciones p
+    WHERE p.id = ?
+  `;
+  
+  db.query(selectQuery, [id], (err, results) => {
+    if (err) {
+      console.error("[ERROR] Database error:", err);
+      return res.status(500).json({ error: "Database error" });
+    }
+    
+    if (results.length === 0) {
+      return res.status(404).json({ error: "Postulation not found" });
+    }
+    
+    const postulacion = results[0];
+    
+    // Actualizar defensa a "completado"
+    const updateDefensaQuery = `
+      UPDATE defensas 
+      SET estado = 'completado', updated_at = NOW()
+      WHERE id = ?
+    `;
+
+    db.query(updateDefensaQuery, [postulacion.defensa_id], (err) => {
+      if (err) {
+        console.error("[ERROR] Error updating defensa:", err);
+        return res.status(500).json({ error: "Error updating defensa" });
+      }
+
+      // Actualizar pago a estado "pendiente_pago" si existe
+      const updatePagoQuery = `
+        UPDATE pagos
+        SET estado = 'pendiente_pago'
+        WHERE defensa_id = ? AND profesional_id = ? AND estado = 'pendiente'
+      `;
+      
+      db.query(
+        updatePagoQuery,
+        [postulacion.defensa_id, postulacion.profesional_id],
+        (err) => {
+          if (err) {
+            console.error("[ERROR] Error updating pago:", err);
+          }
+          
+          console.log(`[v0] Defensa ${postulacion.defensa_id} marked as completado after constancia upload`);
+          
+          res.json({
+            success: true,
+            message: "Defensa marked as completed",
+            defensa_id: postulacion.defensa_id,
+            defensa_estado: "completado"
+          });
+        }
+      );
+    });
+  });
+};
+
+// Aceptar postulación y cambiar defensa a "asignado"
+const acceptPostulacion = (req, res) => {
+  const { id } = req.params;
+
+  // Obtener información de la postulación y defensa
+  const selectQuery = `
+    SELECT 
+      p.id,
+      p.profesional_id,
+      p.defensa_id,
+      p.estado,
+      d.monto_interno,
+      d.max_profesionales,
+      u.nombre,
+      u.apellido,
+      u.correo
+    FROM postulaciones p
+    LEFT JOIN defensas d ON p.defensa_id = d.id
+    LEFT JOIN usuarios u ON p.profesional_id = u.id
+    WHERE p.id = ?
+  `;
+
+  db.query(selectQuery, [id], (err, results) => {
+    if (err) {
+      console.error("[ERROR] Database error:", err);
+      return res.status(500).json({ error: "Database error" });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ error: "Postulation not found" });
+    }
+
+    const postulacion = results[0];
+
+    // Validar si ya hay profesionales aceptados
+    const checkQuery = `
+      SELECT COUNT(*) as aceptados 
+      FROM postulaciones 
+      WHERE defensa_id = ? AND estado = 'aceptado'
+    `;
+
+    db.query(checkQuery, [postulacion.defensa_id], (err, countResults) => {
+      if (err) {
+        console.error("[ERROR] Error checking accepted postulations:", err);
+        return res.status(500).json({ error: "Error checking postulations" });
+      }
+
+      const aceptados = countResults[0].aceptados || 0;
+      const maxProfesionales = postulacion.max_profesionales || 999;
+
+      // Si ya hay suficientes aceptados, rechazar
+      if (aceptados >= maxProfesionales) {
+        return res.status(400).json({
+          error: `Ya hay ${aceptados} profesional(es) aceptado(s). Máximo permitido: ${maxProfesionales}`
+        });
+      }
+
+      // Actualizar postulación a "aceptado"
+      const updatePostulacionQuery = `
+        UPDATE postulaciones 
+        SET estado = 'aceptado'
+        WHERE id = ?
+      `;
+
+      db.query(updatePostulacionQuery, [id], (err) => {
+        if (err) {
+          console.error("[ERROR] Error updating postulation:", err);
+          return res.status(500).json({ error: "Error updating postulation" });
+        }
+
+        // Actualizar defensa a "asignado" (cuando se acepta la postulación)
+        const updateDefensaQuery = `
+          UPDATE defensas 
+          SET estado = 'asignado', updated_at = NOW()
+          WHERE id = ?
+        `;
+
+        db.query(updateDefensaQuery, [postulacion.defensa_id], (err) => {
+          if (err) {
+            console.error("[ERROR] Error updating defensa:", err);
+            return res.status(500).json({ error: "Error updating defensa" });
+          }
+
+          // Crear pago automáticamente
+          const createPagoQuery = `
+            INSERT INTO pagos (defensa_id, profesional_id, monto_pagado, estado)
+            VALUES (?, ?, ?, 'pendiente')
+          `;
+
+          db.query(
+            createPagoQuery,
+            [postulacion.defensa_id, postulacion.profesional_id, postulacion.monto_interno || 0],
+            (err) => {
+              if (err) {
+                console.error("[ERROR] Error creating pago:", err);
+                // No fallar si hay error creando pago
+              }
+
+              // Enviar email al profesional
+              try {
+                emailService.enviarCorreoAceptacion(
+                  postulacion.correo,
+                  `${postulacion.nombre} ${postulacion.apellido}`,
+                  "Postulación Aceptada",
+                  "Su postulación ha sido aceptada"
+                );
+              } catch (emailErr) {
+                console.error("[WARNING] Error sending email:", emailErr);
+              }
+
+              console.log(`[v0] Postulation ${id} accepted. Defensa ${postulacion.defensa_id} marked as asignado. Pago created.`);
+
+              res.json({
+                success: true,
+                message: "Postulation accepted successfully",
+                postulacion_id: id,
+                defensa_id: postulacion.defensa_id,
+                defensa_estado: "asignado",
+                pago_creado: true
+              });
+            }
+          );
+        });
+      });
+    });
+  });
+};
+
 module.exports = {
   getPostulaciones,
   getPostulacionById,
@@ -547,4 +798,6 @@ module.exports = {
   deletePostulacion,
   uploadAttendanceCertificate,
   getDefensasHistorial,
+  acceptPostulacion,
+  completeDefensa,
 };

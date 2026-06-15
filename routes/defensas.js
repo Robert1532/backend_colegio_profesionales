@@ -1,9 +1,63 @@
 const express = require("express");
 const router = express.Router();
+const multer = require("multer");
+const path = require("path");
 const db = require("../config/db");
 const {
   getPostulacionesByDefensa,
 } = require("../controllers/postulacionesController");
+const {
+  getDefensasCompletadas,
+} = require("../controllers/defensasController");
+
+// Configure multer to save academic documents to /uploads/documentos
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, "../uploads/documentos"));
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    const allowedExtensions = [".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"];
+    const extname = path.extname(file.originalname).toLowerCase();
+    if (allowedExtensions.includes(extname)) {
+      return cb(null, true);
+    }
+    return cb(new Error(`Formato no permitido: ${extname}. Use PDF, DOC, DOCX, JPG o PNG`));
+  },
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
+});
+
+// Upload academic document -> returns the saved filename
+router.post("/upload-documento", (req, res, next) => {
+  upload.single("documento")(req, res, (err) => {
+    if (err) {
+      console.error("[ERROR] Error subiendo documento:", err.message);
+      return res.status(400).json({ success: false, error: err.message });
+    }
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: "No se recibió ningún archivo" });
+    }
+    console.log("[v0] Documento académico guardado:", req.file.filename);
+    res.json({
+      success: true,
+      filename: req.file.filename,
+      ruta: `/uploads/documentos/${req.file.filename}`,
+      message: "Documento subido exitosamente",
+    });
+  });
+});
+
+// Get defensas completadas (historial) - must come before other GET routes
+router.get("/historial/completadas", (req, res) => {
+  getDefensasCompletadas(req, res);
+});
 
 // Get all defensas
 router.get("/", (req, res) => {
