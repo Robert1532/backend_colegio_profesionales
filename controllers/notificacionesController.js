@@ -153,6 +153,7 @@ const getAdminNotificaciones = (req, res) => {
       d.tipo_documento,
       d.fecha,
       d.hora,
+      d.monto_interno as monto_pagado,
       NULL as constancia_asistencia
     FROM postulaciones pt
     LEFT JOIN usuarios u ON pt.profesional_id = u.id
@@ -175,6 +176,7 @@ const getAdminNotificaciones = (req, res) => {
       d.tipo_documento,
       d.fecha,
       d.hora,
+      d.monto_interno as monto_pagado,
       pt.constancia_asistencia
     FROM postulaciones pt
     LEFT JOIN usuarios u ON pt.profesional_id = u.id

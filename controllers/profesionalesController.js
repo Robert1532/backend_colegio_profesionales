@@ -2,16 +2,33 @@ const db = require("../config/db");
 const bcrypt = require("bcryptjs");
 const { enviarEmail } = require("../services/emailService");
 
+// Función para generar contraseña automática
+const generatePassword = (nombre, apellido) => {
+  // Tomar primeros 2 caracteres del nombre (mayúscula)
+  const nombrePart = nombre.substring(0, 2).toUpperCase();
+  
+  // Tomar primeros 2 caracteres del apellido (mayúscula)
+  const apellidoPart = apellido.substring(0, 2).toUpperCase();
+  
+  // Generar 4 números aleatorios
+  const numeros = Math.floor(1000 + Math.random() * 9000);
+  
+  // Combinar: Nombre + Apellido + Números
+  return `${nombrePart}${apellidoPart}${numeros}`;
+};
+
 // Create profesional
 const createProfesional = (req, res) => {
-  // Agregar codigo_registro a la desestructuración
+  // Agregar codigo_registro a la desestructuración (password es opcional ahora)
   const { nombre, apellido, correo, telefono, especialidad, password, estado, codigo_registro } = req.body;
 
-  if (!nombre || !apellido || !correo || !telefono || !password) {
+  if (!nombre || !apellido || !correo || !telefono) {
     return res.status(400).json({ error: "Faltan campos requeridos" });
   }
 
-  const hashedPassword = bcrypt.hashSync(password, 10);
+  // Generar contraseña automáticamente si no se proporciona
+  const generatedPassword = password && password.trim() !== '' ? password : generatePassword(nombre, apellido);
+  const hashedPassword = bcrypt.hashSync(generatedPassword, 10);
   const profileEstado = estado || "aprobado";
 
     const query = `
@@ -45,16 +62,20 @@ const createProfesional = (req, res) => {
 
       // Enviar email si el profesional fue creado con estado aprobado
       if (profileEstado === "aprobado") {
-        const asunto = "Tu cuenta ha sido creada - Cambio de Contraseña Requerido";
+        const asunto = "Tu cuenta ha sido creada - Contraseña Temporal";
         const html = `
           <h2>Bienvenido ${nombre} ${apellido}</h2>
           <p>Tu cuenta como profesional ha sido creada exitosamente.</p>
+          <p>Se ha generado una contraseña temporal para ti:</p>
+          <p style="background-color: #f0f0f0; padding: 12px; border-radius: 4px; font-family: monospace; font-weight: bold; text-align: center; font-size: 16px;">
+            ${generatedPassword}
+          </p>
           <p><strong>Por favor cambia tu contraseña en tu primer inicio de sesión.</strong></p>
           <p>
             <strong>Correo:</strong> ${correo}<br>
-            <strong>Contraseña temporal:</strong> ${password}
+            <strong>Contraseña temporal:</strong> ${generatedPassword}
           </p>
-          <p>Por seguridad, te recomendamos cambiar esta contraseña inmediatamente.</p>
+          <p>Por seguridad, te recomendamos cambiar esta contraseña inmediatamente después de iniciar sesión.</p>
         `;
         enviarEmail(correo, asunto, html).catch(error => {
           console.error("[ERROR] Error enviando email de creación:", error);
